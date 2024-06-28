@@ -1,0 +1,82 @@
+(defpackage #:objet-petit-a
+  (:use #:cl #:metabang-bind #:iterate)
+  (:import-from #:iterate #:iter)
+  (:local-nicknames (#:a #:alexandria) (#:s #:serapeum))
+  (:export
+   #+nil common
+   #:defmethod-1 #:problem #:cost #:parameter #:run #:copy
+   #+nil optimization
+   #:metro-hastings #:beta-m #:mutate
+   #:state-not-promising))
+(in-package #:objet-petit-a)
+
+(defmacro defmethod-1 (name (&rest options) (class &rest args) &body body)
+  `(let ((class-obj (find-class ',class)))
+     (closer-mop:finalize-inheritance class-obj)
+     (let ((slot-names (mapcar #'closer-mop:slot-definition-name (closer-mop:class-slots class-obj))))
+       (a:when-let (clashes (intersection slot-names ',args))
+         (error "Name clashes: ~a." clashes))
+       (eval
+        `(defmethod ,',name ,@',options ((self ,',class) ,@',args)
+           (with-slots ,slot-names self
+             ,@',body))))))
+(defgeneric run (search-state)
+  (:method (self) nil))
+(defclass problem ()
+  ((parameter :initarg :parameter :accessor parameter)))
+(defgeneric cost (problem parameter))
+(defgeneric copy (search-state)
+  (:method (self) self)
+  (:method ((self sequence)) (copy-seq self)))
+
+(define-condition state-not-promising () ())
+
+(declaim (inline fastlog2))
+(defun fastlog2 (p)
+  "Compute log2(P) approximately for *positive* integer P.
+Result is SINGLE-FLOAT."
+  (declare (type fixnum p) (optimize (speed 3) (safety 0)))
+  (let* ((exponent (1- (integer-length p)))
+         (x (scale-float (coerce p 'single-float) (- exponent))))
+    (declare (type single-float x))
+    (+ exponent (- (* -0.4326728 x (- x 5.261706)) 1.8439242))))
+
+(defclass metro-hastings (problem)
+  ((beta-m :initarg :beta-m :accessor beta-m)
+   (candidates) (candidate-costs)
+   (cached-cost)
+   #+nil (trace :initform nil))
+  (:default-initargs :beta-m 5.0))
+(defgeneric mutate (search-node parameter cont))
+(defmethod-1 shared-initialize (:after) (metro-hastings slot-names &key &allow-other-keys)
+  (psetf candidates (s:vect) candidate-costs (make-array 0 :adjustable t))
+  (slot-makunbound self 'cached-cost))
+(defmacro klet (((name arglist &body cont)) &body body)
+  `(flet ((,name ,arglist . ,cont))
+     (declare (dynamic-extent #',name)
+              (inline ,name))
+     . ,body))
+(defmethod-1 run () (metro-hastings)
+  (setf (fill-pointer candidates) 0)
+  (klet ((cont (par) (vector-push-extend par candidates)))
+        (mutate self parameter #'cont))
+  (adjust-array candidate-costs (length candidates) :initial-element nil)
+  (iter (for i index-of-vector candidate-costs)
+    (setf (aref candidate-costs i) nil))
+  (iter
+    (with cost-0 = (s:ensure cached-cost (cost self parameter)))
+    (for choice = (random (length candidates)))
+    (for candidate = (aref candidates choice))
+    (for cost-1 = (s:ensure (aref candidate-costs choice)
+                    (cost self candidate)))
+    #+nil (push (list cost-1 parameter) trace)
+    #+nil (if (or (< cost-1 cost-0)
+                  (< (+ (fastlog2 (1+ (random 1000))) (* beta-m (- cost-1 cost-0)))
+                     (fastlog2 (1+ 1000))))
+              (progn (push (list t cost-1 parameter) trace)
+                     (return (psetf cached-cost cost-1 parameter candidate)))
+              (push (list nil cost-1 parameter) trace))
+    (when (or (< cost-1 cost-0)
+              (< (+ (fastlog2 (1+ (random 1000))) (* beta-m (- cost-1 cost-0)))
+                 (fastlog2 (1+ 1000))))
+      (return (psetf cached-cost cost-1 parameter candidate)))))

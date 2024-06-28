@@ -1,0 +1,47 @@
+* Installing dependecies
+You should have a working Common Lisp environment, this includes SBCL and Quicklisp, and preferably Emacs and SLIME.
+
+Clone this repo under =~/quicklisp/local-projects/= and in you Lisp REPL, =(ql:quickload "para")=.
+* Using the System
+In Lisp REPL, for example:
+#+begin_src
+CL-USER> (in-package "PRF-USER")
+PRF-USER> (solve-problem 'nat-sum (nth 0 (gethash 'nat-sum *examples*)))
+#+end_src
+
+You're free to use your own example set (see format of =(nth 0 (gethash 'nat-sum *examples*))= for an example), and define new problems (see =benchmark.lisp= for examples).
+
+* Run the experiments
+The following commands use the included data files to generate LaTeX code and write to standard output stream:
+
+- Rows for Table 1. and 2., separated by a blank line:
+#+begin_src bash
+sbcl --load "experiments.lisp" --eval "(prf::report)"
+#+end_src
+
+- Fig. 11.:
+#+begin_src bash
+sbcl --load "experiments.lisp" --eval "(prf::report-bar)"
+#+end_src
+
+The following commands generate the data files:
+
+#+begin_src bash
+sbcl --load "experiments.lisp" --eval "(prf::generate-data)" --dynamic-space-size 24000 --control-stack-size 2
+#+end_src
+
+#+begin_src bash
+sbcl --load "experiments.lisp" --eval "(prf::generate-data-bfs)" --dynamic-space-size 24000 --control-stack-size 2
+#+end_src
+
+#+begin_src bash
+sbcl --load "experiments.lisp" --eval "(prf::generate-data-serial)" --dynamic-space-size 24000 --control-stack-size 2
+#+end_src
+
+#+begin_src bash
+sbcl --load "experiments.lisp" --eval "(prf/l2::generate-data)"
+#+end_src
+
+#+begin_src bash
+sbcl --load "experiments.lisp" --eval "(prf/smyth::generate-data)"
+#+end_src
