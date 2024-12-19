@@ -8,6 +8,8 @@
            #:syntax #:syntax-p #:syntax-term #:type-of #:non-literal
            #:residual-funcall #:partial-funcall-1 #:partial-funcall))
 
+(in-package #:scaena)
+
 (defclass layers ()
   ((base :initarg :base :accessor base) (plist :initarg :plist :accessor plist))
   (:metaclass c2mop:funcallable-standard-class))

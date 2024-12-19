@@ -383,5 +383,5 @@
         tree-inorder tree-postorder tree-preorder tree-map
         tree-nodes-at-level))
 (in-package #:prf)
-(setq *tests* (load-table (asdf:system-relative-pathname "prf" "tests.lisp"))
-      *examples* (load-table (asdf:system-relative-pathname "prf" "examples.lisp")))
+(setq *tests* (load-table (asdf:system-relative-pathname "para" "tests.lisp"))
+      *examples* (load-table (asdf:system-relative-pathname "para" "examples.lisp")))
